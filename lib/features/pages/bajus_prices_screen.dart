@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
+import 'package:google_fonts/google_fonts.dart';
 
 class MetalRate {
   final String product;
@@ -11,15 +12,18 @@ class MetalRate {
   MetalRate(this.product, this.description, this.price);
 }
 
-class GoldSilverRateScreen extends StatefulWidget {
+class BajusRateScreen extends StatefulWidget {
+  const BajusRateScreen({super.key});
+
   @override
-  _GoldSilverRateScreenState createState() => _GoldSilverRateScreenState();
+  _BajusRateScreenState createState() => _BajusRateScreenState();
 }
 
-class _GoldSilverRateScreenState extends State<GoldSilverRateScreen> {
+class _BajusRateScreenState extends State<BajusRateScreen> {
   List<MetalRate> goldRates = [];
   List<MetalRate> silverRates = [];
   bool isLoading = true;
+  DateTime? lastUpdated;
 
   @override
   void initState() {
@@ -28,111 +32,224 @@ class _GoldSilverRateScreenState extends State<GoldSilverRateScreen> {
   }
 
   Future<void> fetchRates() async {
+    setState(() => isLoading = true);
     const url = 'https://www.bajus.org/gold-price';
-    final response = await http.get(Uri.parse(url));
 
-    if (response.statusCode == 200) {
-      final dom.Document document = parser.parse(response.body);
+    try {
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
-      final goldRows = document.querySelectorAll('.gold-table tbody tr');
-      final silverRows = document.querySelectorAll('.silver-table tbody tr');
+      if (response.statusCode == 200) {
+        final document = parser.parse(response.body);
+        final goldRows = document.querySelectorAll('.gold-table tbody tr');
+        final silverRows = document.querySelectorAll('.silver-table tbody tr');
 
-      final List<MetalRate> gold = goldRows.map((row) {
-        final product = row.querySelector('h6')?.text.trim() ?? '';
-        final desc = row.querySelector('td p')?.text.trim() ?? '';
-        final price = row.querySelector('.price')?.text.trim() ?? '';
-        return MetalRate(product, desc, price);
-      }).toList();
-
-      final List<MetalRate> silver = silverRows.map((row) {
-        final product = row.querySelector('h6')?.text.trim() ?? '';
-        final desc = row.querySelector('td p')?.text.trim() ?? '';
-        final price = row.querySelector('.price')?.text.trim() ?? '';
-        return MetalRate(product, desc, price);
-      }).toList();
-
-      setState(() {
-        goldRates = gold;
-        silverRates = silver;
-        isLoading = false;
-      });
-    } else {
-      print('❌ Failed to fetch data');
-      setState(() => isLoading = false);
+        setState(() {
+          goldRates = _parseMetalRates(goldRows);
+          silverRates = _parseMetalRates(silverRows);
+          lastUpdated = DateTime.now();
+          isLoading = false;
+        });
+      } else {
+        _showError('Failed to load data (${response.statusCode})');
+      }
+    } catch (e) {
+      _showError('Connection error: ${e.toString()}');
     }
+  }
+
+  List<MetalRate> _parseMetalRates(List<dom.Element> rows) {
+    return rows.map((row) {
+      final product = row.querySelector('h6')?.text.trim() ?? 'N/A';
+      final desc = row.querySelector('td p')?.text.trim() ?? '';
+      final price = row.querySelector('.price')?.text.trim() ?? 'N/A';
+      return MetalRate(product, desc, price);
+    }).toList();
+  }
+
+  void _showError(String message) {
+    setState(() => isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red[400],
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Gold & Silver Rates")),
+      backgroundColor: const Color(0xFFF8FAFD),
+      appBar: AppBar(
+        title: Text(
+          'Gold & Silver Rates',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF3366FF),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF3366FF),
+                Color(0xFF00CCFF),
+              ],
+            ),
+          ),
+        ),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: fetchRates,
+          ),
+        ],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: fetchRates,
-        child: ListView(
-          padding: const EdgeInsets.all(12),
-          children: [
-            _buildSectionTitle("Gold Rates"),
-            ...goldRates.map((rate) => MetalRateCard(rate: rate)).toList(),
-            const SizedBox(height: 20),
-            _buildSectionTitle("Silver Rates"),
-            ...silverRates.map((rate) => MetalRateCard(rate: rate)).toList(),
-          ],
+              onRefresh: fetchRates,
+              color: const Color(0xFF3366FF),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (lastUpdated != null)
+                            Text(
+                              'Last updated: ${lastUpdated!.toString().substring(0, 16)}',
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildMetalSection(
+                      'Gold Rates', goldRates, Icons.monetization_on),
+                  _buildMetalSection(
+                      'Silver Rates', silverRates, Icons.currency_exchange),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildMetalSection(
+      String title, List<MetalRate> rates, IconData icon) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3366FF).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: const Color(0xFF3366FF),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2D3748),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...rates.map((rate) => _buildRateCard(rate)).toList(),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildRateCard(MetalRate rate) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: Colors.grey.withOpacity(0.1),
+          width: 1,
         ),
       ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(Icons.star, color: Colors.amber),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          )
-        ],
-      ),
-    );
-  }
-}
-
-class MetalRateCard extends StatelessWidget {
-  final MetalRate rate;
-
-  const MetalRateCard({super.key, required this.rate});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(rate.product,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            if (rate.description.isNotEmpty)
-              Text(rate.description, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Price:",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                Text(rate.price,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green)),
+                Text(
+                  rate.product,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2D3748),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF28C76F).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    rate.price,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF28C76F),
+                    ),
+                  ),
+                ),
               ],
             ),
+            if (rate.description.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  rate.description,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
