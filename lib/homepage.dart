@@ -96,6 +96,7 @@ class HomePage extends StatelessWidget {
                     onTap: () =>
                         _navigateWithFade(context, const BanglaNews24Screen()),
                   ),
+                  const SizedBox(height: 16),
                   _buildPortalCard(
                     context,
                     title: 'Ittefaq News',
