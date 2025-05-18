@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:web_scraping_with_flutter/features/pages/bajus_prices_screen.dart';
 import 'package:web_scraping_with_flutter/features/pages/banglanews24_news_screen.dart';
+import 'package:web_scraping_with_flutter/features/pages/ittefaq_news_screen.dart';
 import 'package:web_scraping_with_flutter/features/pages/kalerkontho_news_screen.dart';
 import 'package:web_scraping_with_flutter/features/pages/prothomalo_news_screen.dart';
 
@@ -94,6 +95,14 @@ class HomePage extends StatelessWidget {
                     color: const Color(0xFF28C76F),
                     onTap: () =>
                         _navigateWithFade(context, const BanglaNews24Screen()),
+                  ),
+                  _buildPortalCard(
+                    context,
+                    title: 'Ittefaq News',
+                    icon: Icons.newspaper_outlined,
+                    color: const Color(0xFF28C76F),
+                    onTap: () =>
+                        _navigateWithFade(context, const IttefaqNewsScreen()),
                   ),
                 ],
               ),
