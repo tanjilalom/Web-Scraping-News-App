@@ -50,14 +50,17 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
           if (titleElement != null && descElement != null) {
             final title = titleElement.text.trim();
             final href = titleElement.attributes['href'] ?? '';
-            final fullLink = href.startsWith('http') ? href : '$baseUrl$href'; // ✅ Fixed here
+            final fullLink = href.startsWith('http')
+                ? href
+                : '$baseUrl$href'; // ✅ Fixed here
             final summary = descElement.text.trim();
 
             items.add({
               'title': title,
               'link': fullLink,
               'description': summary,
-              'pubDate': DateFormat('MMM dd, yyyy - hh:mm a').format(DateTime.now()),
+              'pubDate':
+                  DateFormat('MMM dd, yyyy - hh:mm a').format(DateTime.now()),
             });
           }
         }
@@ -101,24 +104,24 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _hasError
-          ? const Center(child: Text("Error loading news."))
-          : RefreshIndicator(
-        onRefresh: _fetchIttefaqNews,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _newsList.length,
-          itemBuilder: (context, index) {
-            final item = _newsList[index];
-            final link = item['link'];
-            return _NewsCard(
-              title: item['title']!,
-              date: item['pubDate']!,
-              description: item['description']!,
-                onTap: () => _openNews(link!),
-            );
-          },
-        ),
-      ),
+              ? const Center(child: Text("Error loading news."))
+              : RefreshIndicator(
+                  onRefresh: _fetchIttefaqNews,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _newsList.length,
+                    itemBuilder: (context, index) {
+                      final item = _newsList[index];
+                      final link = item['link'];
+                      return _NewsCard(
+                        title: item['title']!,
+                        date: item['pubDate']!,
+                        description: item['description']!,
+                        onTap: () => _openNews(link!),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 
@@ -128,14 +131,12 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
 
     if (uri != null) {
       final success =
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
       debugPrint("Launch success? $success");
     } else {
       debugPrint("Invalid URI: $url");
     }
   }
-
-
 }
 
 class _NewsCard extends StatelessWidget {
@@ -204,7 +205,8 @@ class _NewsCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFF7367F0).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -221,7 +223,8 @@ class _NewsCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.arrow_forward, size: 14, color: Color(0xFF7367F0)),
+                        const Icon(Icons.arrow_forward,
+                            size: 14, color: Color(0xFF7367F0)),
                       ],
                     ),
                   ),
