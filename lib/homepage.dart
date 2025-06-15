@@ -68,7 +68,8 @@ class HomePage extends StatelessWidget {
                     title: 'Bajus Gold & Silver Price',
                     icon: Icons.monetization_on_outlined,
                     color: const Color(0xFFFF9F43),
-                    onTap: () => _navigateWithFade(context, const BajusRateScreen()),
+                    onTap: () =>
+                        _navigateWithFade(context, const BajusRateScreen()),
                   ),
                   const SizedBox(height: 16),
                   _buildPortalCard(
@@ -85,8 +86,8 @@ class HomePage extends StatelessWidget {
                     title: 'Prothom Alo News',
                     icon: Icons.newspaper_outlined,
                     color: const Color(0xFF28C76F),
-                    onTap: () =>
-                        _navigateWithFade(context, const ProthomAloNewsScreen()),
+                    onTap: () => _navigateWithFade(
+                        context, const ProthomAloNewsScreen()),
                   ),
                   const SizedBox(height: 16),
                   _buildPortalCard(
