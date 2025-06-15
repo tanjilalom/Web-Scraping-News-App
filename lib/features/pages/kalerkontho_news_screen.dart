@@ -36,7 +36,7 @@ class _KalerKonthoNewsScreenState extends State<KalerKonthoNewsScreen> {
 
     try {
       final response =
-      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final document = parse(utf8.decode(response.bodyBytes));
@@ -46,7 +46,9 @@ class _KalerKonthoNewsScreenState extends State<KalerKonthoNewsScreen> {
           final pubDate = _formatDate(e.querySelector('pubDate')?.text);
           final rawLink = e.querySelector('link')?.text.trim();
           final fallbackLink = e.querySelector('guid')?.text.trim();
-          final link = (rawLink != null && rawLink.startsWith('http')) ? rawLink : fallbackLink ?? '';
+          final link = (rawLink != null && rawLink.startsWith('http'))
+              ? rawLink
+              : fallbackLink ?? '';
           final description = e.querySelector('description')?.text ?? '';
 
           return {
@@ -77,7 +79,8 @@ class _KalerKonthoNewsScreenState extends State<KalerKonthoNewsScreen> {
   String _formatDate(String? dateString) {
     if (dateString == null) return 'No Date';
     try {
-      final date = DateFormat('EEE, dd MMM yyyy HH:mm:ss Z', 'en_US').parse(dateString);
+      final date =
+          DateFormat('EEE, dd MMM yyyy HH:mm:ss Z', 'en_US').parse(dateString);
       return DateFormat('MMM dd, yyyy - hh:mm a').format(date);
     } catch (_) {
       return dateString;
@@ -99,13 +102,12 @@ class _KalerKonthoNewsScreenState extends State<KalerKonthoNewsScreen> {
 
     if (uri != null) {
       final success =
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
       debugPrint("Launch success? $success");
     } else {
       debugPrint("Invalid URI: $url");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -144,54 +146,56 @@ class _KalerKonthoNewsScreenState extends State<KalerKonthoNewsScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF3366FF)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF3366FF)))
           : _hasError
-          ? _buildErrorUI()
-          : RefreshIndicator(
-        onRefresh: _fetchNews,
-        color: const Color(0xFF3366FF),
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            if (_lastUpdated != null)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Row(
-                    children: [
-                      Icon(Icons.update, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Updated ${DateFormat('MMM dd, hh:mm a').format(_lastUpdated!)}',
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[600],
-                          fontSize: 12,
+              ? _buildErrorUI()
+              : RefreshIndicator(
+                  onRefresh: _fetchNews,
+                  color: const Color(0xFF3366FF),
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      if (_lastUpdated != null)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.update,
+                                    size: 16, color: Colors.grey[600]),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Updated ${DateFormat('MMM dd, hh:mm a').format(_lastUpdated!)}',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList.builder(
+                          itemCount: _items.length,
+                          itemBuilder: (context, index) {
+                            final item = _items[index];
+                            final link = item['link'];
+                            return _NewsCard(
+                              title: item['title']!,
+                              date: item['pubDate']!,
+                              description: item['description']!,
+                              onTap: () => _openNews(link!),
+                            );
+                          },
                         ),
                       ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
                     ],
                   ),
                 ),
-              ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList.builder(
-                itemCount: _items.length,
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  final link = item['link'];
-                  return _NewsCard(
-                    title: item['title']!,
-                    date: item['pubDate']!,
-                    description: item['description']!,
-                    onTap: () => _openNews(link!),
-                  );
-                },
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
-        ),
-      ),
     );
   }
 
@@ -304,7 +308,7 @@ class _NewsCard extends StatelessWidget {
                 const Spacer(),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF7367F0).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),

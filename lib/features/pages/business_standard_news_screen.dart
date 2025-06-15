@@ -97,13 +97,14 @@ class _TBSNewsScreenState extends State<TBSNewsScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
-                                    width: 100,
-                                    height: 100,
-                                    color: Colors.grey[200],
-                                    child:
-                                    const Icon(Icons.broken_image, color: Colors.grey),
-                                  ),
-                              loadingBuilder: (context, child, loadingProgress) {
+                                width: 100,
+                                height: 100,
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.broken_image,
+                                    color: Colors.grey),
+                              ),
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
                                 return Container(
                                   width: 100,
@@ -111,10 +112,14 @@ class _TBSNewsScreenState extends State<TBSNewsScreen> {
                                   color: Colors.grey[200],
                                   child: Center(
                                     child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                          : null,
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
                                       color: Colors.deepOrange,
                                     ),
                                   ),
@@ -185,7 +190,6 @@ class _TBSNewsScreenState extends State<TBSNewsScreen> {
         },
       ),
     );
-
   }
 
   void _openNews(String url) async {
