@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
+import 'package:http/io_client.dart';  // Add this import for IOClient
 
 class MetalRate {
   final String product;
@@ -24,26 +26,47 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
   List<MetalRate> silverRates = [];
   bool isLoading = true;
   DateTime? lastUpdated;
+  bool hasError = false;
+  late http.Client _httpClient;  // Declare as class variable
 
   @override
   void initState() {
     super.initState();
+    // Initialize the custom HTTP client
+    final HttpClient client = HttpClient();
+    client.badCertificateCallback =
+        (X509Certificate cert, String host, int port) => true;
+    _httpClient = IOClient(client);
     fetchRates();
   }
 
+  @override
+  void dispose() {
+    _httpClient.close();  // Close the client when done
+    super.dispose();
+  }
+
   Future<void> fetchRates() async {
-    setState(() => isLoading = true);
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true;
+      hasError = false;
+    });
+
     const url = 'https://www.bajus.org/gold-price';
 
     try {
-      final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response = await _httpClient
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final document = parser.parse(response.body);
-        final goldRows = document.querySelectorAll('.gold-table tbody tr');
-        final silverRows = document.querySelectorAll('.silver-table tbody tr');
+        final goldRows = document.querySelectorAll('.gold-table tbody tr') ?? [];
+        final silverRows = document.querySelectorAll('.silver-table tbody tr') ?? [];
 
+        if (!mounted) return;
         setState(() {
           goldRates = _parseMetalRates(goldRows);
           silverRates = _parseMetalRates(silverRows);
@@ -51,10 +74,16 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
           isLoading = false;
         });
       } else {
-        _showError('Failed to load data (${response.statusCode})');
+        _showError('Failed to load data. Server responded with ${response.statusCode}');
       }
-    } catch (e) {
-      _showError('Connection error: ${e.toString()}');
+    } on SocketException {
+      _showError('No internet connection');
+    } on HttpException {
+      _showError('Could not reach the server');
+    } on FormatException {
+      _showError('Bad response format');
+    } on Exception catch (e) {
+      _showError('An unexpected error occurred: ${e.toString()}');
     }
   }
 
@@ -68,11 +97,21 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
   }
 
   void _showError(String message) {
-    setState(() => isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.red[400],
-    ));
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+      hasError = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red[400],
+        action: SnackBarAction(
+          label: 'Retry',
+          onPressed: fetchRates,
+        ),
+      ),
+    );
   }
 
   @override
@@ -111,45 +150,71 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: fetchRates,
+            onPressed: isLoading ? null : fetchRates,
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: fetchRates,
-              color: const Color(0xFF3366FF),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (lastUpdated != null)
-                            Text(
-                              'Last updated: ${lastUpdated!.toString().substring(0, 16)}',
-                              style: GoogleFonts.poppins(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                        ],
+      body: _buildBodyContent(),
+    );
+  }
+
+  Widget _buildBodyContent() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load rates',
+              style: GoogleFonts.poppins(fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: fetchRates,
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: fetchRates,
+      color: const Color(0xFF3366FF),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (lastUpdated != null)
+                    Text(
+                      'Last updated: ${lastUpdated!.toString().substring(0, 16)}',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontSize: 12,
                       ),
                     ),
-                  ),
-                  _buildMetalSection(
-                      'Gold Rates', goldRates, Icons.monetization_on),
-                  _buildMetalSection(
-                      'Silver Rates', silverRates, Icons.currency_exchange),
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
+          ),
+          _buildMetalSection('Gold Rates', goldRates, Icons.monetization_on),
+          _buildMetalSection('Silver Rates', silverRates, Icons.currency_exchange),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        ],
+      ),
     );
   }
 
@@ -188,7 +253,13 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
               ],
             ),
           ),
-          ...rates.map((rate) => _buildRateCard(rate)).toList(),
+          if (rates.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 20),
+              child: Text('No data available'),
+            )
+          else
+            ...rates.map((rate) => _buildRateCard(rate)).toList(),
         ]),
       ),
     );
@@ -213,17 +284,19 @@ class _BajusRateScreenState extends State<BajusRateScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  rate.product,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2D3748),
+                Expanded(
+                  child: Text(
+                    rate.product,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2D3748),
+                    ),
                   ),
                 ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF28C76F).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),

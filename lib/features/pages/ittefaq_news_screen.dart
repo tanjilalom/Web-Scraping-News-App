@@ -1,8 +1,9 @@
-import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:html/parser.dart' as html_parser;
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:html/parser.dart' as html_parser;
+import 'package:http/io_client.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,10 +36,16 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
     });
 
     try {
-      final response = await http.get(Uri.parse(url));
+      // Create custom HTTP client
+      final HttpClient client = HttpClient();
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+      final ioClient = IOClient(client);
+
+      final response = await ioClient.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        final document = html_parser.parse(utf8.decode(response.bodyBytes));
+        final document = html_parser.parse(response.body);
         final infoBlocks = document.querySelectorAll('div.info');
 
         final List<Map<String, String>> items = [];
@@ -48,17 +55,10 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
           final descElement = block.querySelector('div.summery');
 
           if (titleElement != null && descElement != null) {
-            final title = titleElement.text.trim();
-            final href = titleElement.attributes['href'] ?? '';
-            final fullLink = href.startsWith('http')
-                ? href
-                : '$baseUrl$href'; // ✅ Fixed here
-            final summary = descElement.text.trim();
-
             items.add({
-              'title': title,
-              'link': fullLink,
-              'description': summary,
+              'title': titleElement.text.trim(),
+              'link': titleElement.attributes['href'] ?? '',
+              'description': descElement.text.trim(),
               'pubDate':
                   DateFormat('MMM dd, yyyy - hh:mm a').format(DateTime.now()),
             });
@@ -72,15 +72,17 @@ class _IttefaqNewsScreenState extends State<IttefaqNewsScreen> {
       } else {
         throw Exception('Failed to load page: ${response.statusCode}');
       }
+      client.close();
     } catch (e) {
       setState(() {
         _hasError = true;
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+        ),
+      );
     }
   }
 
